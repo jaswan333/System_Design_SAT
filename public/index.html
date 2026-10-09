@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="TICKETBOX — Live Concerts, Sports, and Event Tickets with real-time seat reservation.">
+  <title>TICKETBOX — Discover Live Concerts, Sports & Event Tickets</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ===================================================================
+       TOP NAVIGATION BAR
+       =================================================================== -->
+  <header class="navbar">
+    <div class="nav-left">
+      <div class="brand-logo-link" onclick="ticketBoxApp.resetView()">
+        <div class="brand-icon">🎟️</div>
+        <div class="brand-name">TICKET<span>BOX</span></div>
+      </div>
+      <ul class="nav-links">
+        <li><a class="nav-link active" onclick="ticketBoxApp.filterCategory('ALL')">Explore</a></li>
+        <li><a class="nav-link" onclick="ticketBoxApp.filterCategory('Concert')">Concerts</a></li>
+        <li><a class="nav-link" onclick="ticketBoxApp.filterCategory('Sports')">Sports</a></li>
+        <li><a class="nav-link" onclick="ticketBoxApp.filterCategory('Conference')">Conferences</a></li>
+      </ul>
+      <div class="nav-location-picker" title="Change Location">
+        <span>📍</span>
+        <span id="nav-current-city">San Francisco, CA</span>
+        <span>▾</span>
+      </div>
+    </div>
+
+    <div class="nav-right">
+      <button class="btn-lld-toggle" id="btn-open-lld-drawer" onclick="lldDrawer.open()">
+        <span>📐</span> LLD Architecture & REST APIs
+      </button>
+      <button class="btn-my-tickets" id="btn-open-my-bookings" onclick="ticketBoxApp.openMyBookings()">
+        <span>🎫</span> My Tickets <strong id="nav-bookings-count" style="color: var(--brand-blue-light);">(0)</strong>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===================================================================
+       HERO DISCOVERY SECTION
+       =================================================================== -->
+  <section class="hero-section">
+    <div class="hero-banner">
+      <div class="hero-tag">🔥 Trending Live Tours 2026</div>
+      <h1 class="hero-title">Experience Live Arenas,<br>Concerts & World Championships</h1>
+      <p class="hero-subtitle">
+        Book authentic seats in real time. Backed by concurrent seat reservation and instant ticket confirmation.
+      </p>
+
+      <!-- Multi-Field Search Bar -->
+      <div class="hero-search-bar">
+        <div class="search-field" style="flex: 1.5;">
+          <span>🔍</span>
+          <input type="text" id="hero-search-input" placeholder="Search artists, teams, or venues..." oninput="ticketBoxApp.onSearchInput()">
+        </div>
+        <div class="search-field" style="flex: 1;">
+          <span>📍</span>
+          <select id="hero-city-select" onchange="ticketBoxApp.onSearchInput()">
+            <option value="ALL">All Cities</option>
+            <option value="San Francisco">San Francisco, CA</option>
+            <option value="Seattle">Seattle, WA</option>
+            <option value="New York">New York, NY</option>
+          </select>
+        </div>
+        <div class="search-field" style="flex: 1;">
+          <span>🏷️</span>
+          <select id="hero-category-select" onchange="ticketBoxApp.onSearchInput()">
+            <option value="ALL">All Categories</option>
+            <option value="Concert">Concerts</option>
+            <option value="Sports">Sports</option>
+            <option value="Conference">Conferences</option>
+          </select>
+        </div>
+        <button class="btn-search-submit" onclick="ticketBoxApp.loadEvents()">
+          Find Tickets
+        </button>
+      </div>
+
+      <!-- Category Filter Chips -->
+      <div class="category-chips">
+        <div class="category-chip active" data-category="ALL" onclick="ticketBoxApp.selectCategoryChip(this, 'ALL')">All Events</div>
+        <div class="category-chip" data-category="Concert" onclick="ticketBoxApp.selectCategoryChip(this, 'Concert')">🎸 Concerts</div>
+        <div class="category-chip" data-category="Sports" onclick="ticketBoxApp.selectCategoryChip(this, 'Sports')">🏆 Sports Matches</div>
+        <div class="category-chip" data-category="Conference" onclick="ticketBoxApp.selectCategoryChip(this, 'Conference')">💻 Tech Summits</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       MAIN EVENT CATALOG
+       =================================================================== -->
+  <main class="main-content">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Upcoming Live Events</h2>
+        <p class="section-desc">Real-time availability directly synchronized with the ticketing backend</p>
+      </div>
+      <div style="font-size: 0.85rem; color: var(--text-muted);" id="events-count-badge">
+        Showing live events
+      </div>
+    </div>
+
+    <!-- Event Cards Grid -->
+    <div class="events-catalog-grid" id="events-grid">
+      <!-- Populated dynamically by JS -->
+    </div>
+  </main>
+
+  <!-- ===================================================================
+       STADIUM SEAT SELECTION MODAL (Real Ticketmaster Style)
+       =================================================================== -->
+  <div class="modal-overlay" id="seat-modal-overlay">
+    <div class="seat-modal-window">
+      <!-- Modal Header -->
+      <div class="seat-modal-header">
+        <div class="modal-header-info">
+          <h2 id="modal-event-title">Event Title</h2>
+          <p id="modal-event-meta">Venue • Date & Time</p>
+        </div>
+        <button class="btn-close-modal" onclick="ticketBoxApp.closeSeatModal()">✕</button>
+      </div>
+
+      <!-- Modal Body (Arena Stage & Seats) -->
+      <div class="seat-modal-body">
+        <div class="arena-stage-curve">
+          <div class="stage-glow-arc">STAGE FRONT / SCREEN</div>
+        </div>
+
+        <!-- Realtime Seat Grid -->
+        <div class="arena-seats-layout" id="arena-seats-container">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Legend -->
+        <div class="arena-legend">
+          <div class="legend-pill">
+            <div class="legend-dot" style="background: #1e2638; border: 1px solid rgba(255,255,255,0.2);"></div>
+            <span>Available</span>
+          </div>
+          <div class="legend-pill">
+            <div class="legend-dot" style="background: var(--accent-emerald);"></div>
+            <span>Selected</span>
+          </div>
+          <div class="legend-pill">
+            <div class="legend-dot" style="background: rgba(245,158,11,0.3); border: 1px dashed var(--accent-gold);"></div>
+            <span>On Hold (5m lock)</span>
+          </div>
+          <div class="legend-pill">
+            <div class="legend-dot" style="background: #141a26; opacity: 0.4;"></div>
+            <span>Booked / Sold Out</span>
+          </div>
+          <div class="legend-pill">
+            <span style="color: var(--accent-gold); font-weight: 700;">● VIP ($180)</span>
+            <span style="color: var(--accent-cyan); font-weight: 700; margin-left: 10px;">● Premium ($110)</span>
+            <span style="color: var(--brand-blue-light); font-weight: 700; margin-left: 10px;">● Standard ($65)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Selection Dock -->
+      <div class="seat-modal-footer">
+        <div>
+          <div class="selection-summary-text" id="selection-seats-summary">No seats selected</div>
+          <div class="selection-summary-price" id="selection-subtotal-price">$0</div>
+        </div>
+        <button class="btn-proceed-checkout" id="btn-proceed-checkout" onclick="ticketBoxApp.openCheckoutModal()" disabled>
+          Reserve Seats & Checkout →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       CHECKOUT & PAYMENT MODAL
+       =================================================================== -->
+  <div class="modal-overlay" id="checkout-modal-overlay">
+    <div class="checkout-modal-window">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="font-size: 1.3rem; font-weight: 800;">Review Order & Checkout</h2>
+        <button class="btn-close-modal" onclick="ticketBoxApp.closeCheckoutModal()">✕</button>
+      </div>
+
+      <!-- 5-Minute Hold Timer Banner -->
+      <div class="checkout-timer-alert" id="checkout-timer-box">
+        <div>
+          <strong>🔒 Seats Temporarily Locked:</strong> Your seats are reserved for checkout. Complete payment before expiration to guarantee your tickets.
+        </div>
+        <div class="timer-digits" id="checkout-countdown">05:00</div>
+      </div>
+
+      <!-- Attendee Information -->
+      <div class="checkout-form-section">
+        <div class="section-label-heading"><span>👤</span> Contact Information</div>
+        <div class="form-row">
+          <label class="form-label">Full Name *</label>
+          <input type="text" class="form-input" id="checkout-name" value="Alex Morgan" placeholder="e.g. Alex Morgan">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Email Address (E-tickets delivered here) *</label>
+          <input type="email" class="form-input" id="checkout-email" value="alex.morgan@example.com" placeholder="name@domain.com">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Mobile Phone</label>
+          <input type="tel" class="form-input" id="checkout-phone" value="+1 (555) 234-8901">
+        </div>
+      </div>
+
+      <!-- Order Breakdown -->
+      <div class="order-breakdown-card">
+        <div class="section-label-heading" style="margin-bottom: 10px;"><span>📋</span> Order Summary</div>
+        <div class="breakdown-row">
+          <span id="summary-event-name">Event</span>
+          <span id="summary-seats-badges">Seats</span>
+        </div>
+        <div class="breakdown-row">
+          <span>Tickets Subtotal</span>
+          <span id="summary-subtotal">$0</span>
+        </div>
+        <div class="breakdown-row">
+          <span>Facility & Processing Fee</span>
+          <span style="color: var(--accent-emerald);">FREE (Promotional)</span>
+        </div>
+        <div class="breakdown-row total">
+          <span>Total Amount</span>
+          <span id="summary-grand-total" style="color: var(--brand-blue-light);">$0</span>
+        </div>
+      </div>
+
+      <!-- Payment Simulation Options -->
+      <div class="checkout-form-section">
+        <div class="section-label-heading"><span>💳</span> Payment Method & Simulator</div>
+        <div class="form-row">
+          <label class="form-label">Payment Gateway Simulation</label>
+          <select class="form-input" id="checkout-payment-mode">
+            <option value="SUCCESS">✅ Credit Card (Simulate Payment Success - 201 Created)</option>
+            <option value="FAILED">❌ Card Declined (Simulate Payment Error - 402 Decline)</option>
+          </select>
+        </div>
+        <div class="form-row" style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px;">
+          <div>
+            <label class="form-label">Card Number</label>
+            <input type="text" class="form-input" value="•••• •••• •••• 4242" readonly>
+          </div>
+          <div>
+            <label class="form-label">Expires</label>
+            <input type="text" class="form-input" value="12/28" readonly>
+          </div>
+          <div>
+            <label class="form-label">CVC</label>
+            <input type="text" class="form-input" value="982" readonly>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-proceed-checkout" id="btn-submit-payment" style="width: 100%; padding: 14px; font-size: 1rem;" onclick="ticketBoxApp.confirmBooking()">
+        Pay Now & Get Tickets
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       DIGITAL TICKET PASS MODAL (Apple Wallet / Concert Pass)
+       =================================================================== -->
+  <div class="modal-overlay" id="ticket-pass-overlay">
+    <div class="checkout-modal-window" style="max-width: 560px; background: transparent; border: none; padding: 0;">
+      <div class="ticket-wrapper">
+        <div class="ticket-container">
+          <div class="ticket-top-header">
+            <div>
+              <div class="ticket-pass-type">Digital Admission Pass</div>
+              <div class="ticket-ref-number" id="pass-ref">EVT-XXXXX</div>
+            </div>
+            <div class="ticket-status-pill" id="pass-status-pill">CONFIRMED</div>
+          </div>
+
+          <div class="ticket-inner-content">
+            <h3 class="ticket-event-heading" id="pass-event-title">Event Title</h3>
+
+            <div class="ticket-info-grid">
+              <div class="ticket-info-item">
+                <label>Date & Time</label>
+                <span id="pass-datetime">Nov 15, 2026 • 19:30</span>
+              </div>
+              <div class="ticket-info-item">
+                <label>Venue</label>
+                <span id="pass-venue">Metropolis Arena</span>
+              </div>
+              <div class="ticket-info-item">
+                <label>Attendee</label>
+                <span id="pass-attendee">Alex Morgan</span>
+              </div>
+              <div class="ticket-info-item">
+                <label>Seats Reserved</label>
+                <span id="pass-seats" style="color: var(--accent-cyan); font-weight: 700;">A1, A2</span>
+              </div>
+            </div>
+
+            <!-- Perforated Tear Line -->
+            <div class="ticket-tear-line"></div>
+
+            <div class="ticket-barcode-section">
+              <div class="ticket-qr-box">
+                <canvas id="pass-qr-canvas" width="130" height="130"></canvas>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">
+                SCAN BARCODE AT GATE ENTRANCE
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-color); font-size: 0.85rem;">
+              <span style="color: var(--text-muted);">Total Paid: <strong id="pass-total" style="color: #fff;">$360.00</strong></span>
+              <span style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted);" id="pass-txn">TXN-12345678</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Post-booking actions -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; gap: 12px;">
+          <button class="btn-proceed-checkout" style="background: var(--bg-surface); border: 1px solid var(--border-color); color: #fff;" onclick="ticketBoxApp.closeTicketPass()">
+            Done / Browse Events
+          </button>
+          <button class="btn-proceed-checkout" id="btn-cancel-pass" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171;" onclick="ticketBoxApp.cancelCurrentTicket()">
+            ❌ Cancel Booking (Task 6)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MY BOOKINGS MODAL
+       =================================================================== -->
+  <div class="modal-overlay" id="my-bookings-overlay">
+    <div class="checkout-modal-window" style="max-width: 720px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="font-size: 1.3rem; font-weight: 800;">My Tickets & Purchase History</h2>
+        <button class="btn-close-modal" onclick="ticketBoxApp.closeMyBookings()">✕</button>
+      </div>
+
+      <div id="my-bookings-list-container">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       SLIDE-OVER LLD ARCHITECTURE & SYSTEM DESIGN DRAWER
+       (Accessible anytime for interview / engineering review)
+       =================================================================== -->
+  <div class="lld-drawer-overlay" id="lld-drawer-overlay" onclick="lldDrawer.closeOnBackdrop(event)">
+    <div class="lld-drawer-window">
+      <!-- Drawer Header -->
+      <div class="lld-drawer-header">
+        <h2><span>📐</span> Low-Level Design (LLD) & REST APIs</h2>
+        <button class="btn-close-modal" onclick="lldDrawer.close()">✕</button>
+      </div>
+
+      <!-- Drawer Tabs -->
+      <div class="lld-nav-tabs">
+        <button class="lld-tab-btn active" onclick="lldDrawer.showTab('lld-flow', this)">1. Customer Sequence Flow</button>
+        <button class="lld-tab-btn" onclick="lldDrawer.showTab('lld-api', this)">2. REST API Catalog & Sandbox</button>
+        <button class="lld-tab-btn" onclick="lldDrawer.showTab('lld-matrix', this)">3. HTTP Status Codes & Tasks</button>
+        <button class="lld-tab-btn" onclick="lldDrawer.showTab('lld-locks', this)">4. Concurrency & Locks Monitor</button>
+      </div>
+
+      <!-- Drawer Content -->
+      <div class="lld-drawer-content">
+
+        <!-- TAB 1: SEQUENCE FLOW -->
+        <div id="lld-tab-flow" class="lld-tab-panel">
+          <h3 style="font-size: 1.1rem; margin-bottom: 10px; color: #fff;">Task 5: End-to-End Customer Booking Sequence</h3>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 18px;">
+            <code>Customer ➔ Search Event ➔ View Event ➔ Select Ticket ➔ Book ➔ Payment ➔ Confirmation</code>
+          </p>
+
+          <!-- Sequence Diagram SVG -->
+          <div style="background: #090d16; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px; margin-bottom: 24px; overflow-x: auto;">
+            <svg viewBox="0 0 860 440" width="100%" height="auto" style="font-family: var(--font-mono); font-size: 11px;">
+              <line x1="60" y1="40" x2="60" y2="420" stroke="#334155" stroke-dasharray="3 3"/>
+              <line x1="200" y1="40" x2="200" y2="420" stroke="#334155" stroke-dasharray="3 3"/>
+              <line x1="380" y1="40" x2="380" y2="420" stroke="#334155" stroke-dasharray="3 3"/>
+              <line x1="560" y1="40" x2="560" y2="420" stroke="#334155" stroke-dasharray="3 3"/>
+              <line x1="720" y1="40" x2="720" y2="420" stroke="#334155" stroke-dasharray="3 3"/>
+              <line x1="820" y1="40" x2="820" y2="420" stroke="#334155" stroke-dasharray="3 3"/>
+
+              <rect x="15" y="10" width="90" height="30" rx="4" fill="#1e293b" stroke="#3b82f6"/>
+              <text x="60" y="30" fill="#fff" text-anchor="middle" font-weight="bold">Customer</text>
+
+              <rect x="155" y="10" width="90" height="30" rx="4" fill="#1e293b" stroke="#06b6d4"/>
+              <text x="200" y="30" fill="#fff" text-anchor="middle" font-weight="bold">UI Client</text>
+
+              <rect x="325" y="10" width="110" height="30" rx="4" fill="#1e293b" stroke="#8b5cf6"/>
+              <text x="380" y="30" fill="#fff" text-anchor="middle" font-weight="bold">Event Service</text>
+
+              <rect x="500" y="10" width="120" height="30" rx="4" fill="#1e293b" stroke="#f59e0b"/>
+              <text x="560" y="30" fill="#fff" text-anchor="middle" font-weight="bold">Booking Service</text>
+
+              <rect x="670" y="10" width="100" height="30" rx="4" fill="#1e293b" stroke="#10b981"/>
+              <text x="720" y="30" fill="#fff" text-anchor="middle" font-weight="bold">Lock Manager</text>
+
+              <rect x="780" y="10" width="80" height="30" rx="4" fill="#1e293b" stroke="#ef4444"/>
+              <text x="820" y="30" fill="#fff" text-anchor="middle" font-weight="bold">Payment</text>
+
+              <!-- Step 1 -->
+              <line x1="60" y1="70" x2="200" y2="70" stroke="#3b82f6" stroke-width="1.5"/>
+              <text x="130" y="64" fill="#cbd5e1" text-anchor="middle">1. Search Event</text>
+              <line x1="200" y1="85" x2="380" y2="85" stroke="#06b6d4" stroke-width="1.5"/>
+              <text x="290" y="80" fill="#94a3b8" text-anchor="middle">GET /api/events</text>
+              <line x1="380" y1="105" x2="200" y2="105" stroke="#06b6d4" stroke-dasharray="3 3"/>
+              <text x="290" y="100" fill="#94a3b8" text-anchor="middle">200 OK (Event list)</text>
+
+              <!-- Step 2 -->
+              <line x1="200" y1="140" x2="380" y2="140" stroke="#06b6d4" stroke-width="1.5"/>
+              <text x="290" y="135" fill="#94a3b8" text-anchor="middle">2. GET /api/events/:id</text>
+              <line x1="380" y1="160" x2="200" y2="160" stroke="#06b6d4" stroke-dasharray="3 3"/>
+              <text x="290" y="155" fill="#94a3b8" text-anchor="middle">200 OK (Tiers & Venue)</text>
+
+              <!-- Step 3 & 4 -->
+              <line x1="200" y1="195" x2="380" y2="195" stroke="#06b6d4" stroke-width="1.5"/>
+              <text x="290" y="190" fill="#94a3b8" text-anchor="middle">3. GET .../available-tickets</text>
+
+              <line x1="200" y1="230" x2="560" y2="230" stroke="#f59e0b" stroke-width="1.5"/>
+              <text x="380" y="225" fill="#fde68a" text-anchor="middle">4. POST /api/bookings/hold (Atomic Lock)</text>
+              <line x1="560" y1="245" x2="720" y2="245" stroke="#10b981" stroke-width="1.5"/>
+              <text x="640" y="240" fill="#a7f3d0" text-anchor="middle">acquireLocks(5m TTL)</text>
+              <line x1="720" y1="260" x2="560" y2="260" stroke="#10b981" stroke-dasharray="3 3"/>
+              <line x1="560" y1="275" x2="200" y2="275" stroke="#f59e0b" stroke-dasharray="3 3"/>
+              <text x="380" y="270" fill="#fde68a" text-anchor="middle">201 Created (lockToken, 5-min timer)</text>
+
+              <!-- Step 5 & 6 -->
+              <line x1="200" y1="310" x2="560" y2="310" stroke="#f59e0b" stroke-width="1.5"/>
+              <text x="380" y="305" fill="#fde68a" text-anchor="middle">5. POST /api/bookings (Confirm & Pay)</text>
+              <line x1="560" y1="330" x2="820" y2="330" stroke="#ef4444" stroke-width="1.5"/>
+              <text x="690" y="325" fill="#fca5a5" text-anchor="middle">processPayment()</text>
+              <line x1="820" y1="350" x2="560" y2="350" stroke="#ef4444" stroke-dasharray="3 3"/>
+              <text x="690" y="345" fill="#fca5a5" text-anchor="middle">Payment SUCCESS</text>
+
+              <line x1="560" y1="375" x2="720" y2="375" stroke="#10b981" stroke-width="1.5"/>
+              <text x="640" y="370" fill="#a7f3d0" text-anchor="middle">releaseLock + mark BOOKED</text>
+              <line x1="560" y1="395" x2="200" y2="395" stroke="#10b981" stroke-dasharray="3 3"/>
+              <text x="380" y="390" fill="#34d399" text-anchor="middle">201 Created (Booking Confirmed + QR)</text>
+
+              <line x1="200" y1="410" x2="60" y2="410" stroke="#3b82f6" stroke-width="1.5"/>
+              <text x="130" y="405" fill="#93c5fd" text-anchor="middle">6. Render Ticket Pass</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- TAB 2: API SANDBOX -->
+        <div id="lld-tab-api" class="lld-tab-panel" style="display: none;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 10px; color: #fff;">Interactive REST API Explorer</h3>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 18px;">
+            Test all challenge endpoints directly against the Node.js Express server:
+          </p>
+          <div id="lld-api-list-container">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- TAB 3: SPECIFICATIONS & STATUS CODES -->
+        <div id="lld-tab-matrix" class="lld-tab-panel" style="display: none;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 12px; color: #fff;">Tasks 1 to 4: API Catalog & Status Codes</h3>
+          <table class="lld-spec-table">
+            <thead>
+              <tr>
+                <th>Task</th>
+                <th>Method</th>
+                <th>URI Pattern</th>
+                <th>Success Status</th>
+                <th>Errors</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Search Event</td>
+                <td><span class="method-tag method-get">GET</span></td>
+                <td><code>/api/events</code></td>
+                <td><code style="color: #34d399;">200 OK</code></td>
+                <td>--</td>
+              </tr>
+              <tr>
+                <td>Get Details</td>
+                <td><span class="method-tag method-get">GET</span></td>
+                <td><code>/api/events/:id</code></td>
+                <td><code style="color: #34d399;">200 OK</code></td>
+                <td><code>404 Not Found</code></td>
+              </tr>
+              <tr>
+                <td>Get Available Tickets</td>
+                <td><span class="method-tag method-get">GET</span></td>
+                <td><code>/api/events/:id/available-tickets</code></td>
+                <td><code style="color: #34d399;">200 OK</code></td>
+                <td><code>404 Not Found</code></td>
+              </tr>
+              <tr>
+                <td>Hold Seats (Lock)</td>
+                <td><span class="method-tag method-post">POST</span></td>
+                <td><code>/api/bookings/hold</code></td>
+                <td><code style="color: #34d399;">201 Created</code></td>
+                <td><code>409 Conflict</code> (Seat already held)</td>
+              </tr>
+              <tr>
+                <td>Book Ticket</td>
+                <td><span class="method-tag method-post">POST</span></td>
+                <td><code>/api/bookings</code></td>
+                <td><code style="color: #34d399;">201 Created</code></td>
+                <td><code>400 Bad Request</code>, <code>402 Payment Required</code>, <code>409 Conflict</code></td>
+              </tr>
+              <tr>
+                <td>Cancel Ticket (Task 6)</td>
+                <td><span class="method-tag method-post">POST</span></td>
+                <td><code>/api/bookings/:id/cancel</code></td>
+                <td><code style="color: #34d399;">200 OK</code></td>
+                <td><code>400 Bad Request</code> (Already cancelled), <code>404 Not Found</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4 style="font-size: 0.95rem; margin-bottom: 8px; color: #fff;">Task 3: Book Ticket Sample Payload</h4>
+          <pre class="code-box">{
+  "eventId": "evt_music_fest_2026",
+  "customer": {
+    "name": "Sarah Connor",
+    "email": "sarah.connor@example.com",
+    "phone": "+1-555-0199"
+  },
+  "seatIds": ["seat_A1", "seat_A2"],
+  "lockToken": "lock_9x3a1b_1770000000",
+  "paymentDetails": {
+    "method": "CREDIT_CARD",
+    "simulateStatus": "SUCCESS"
+  }
+}</pre>
+        </div>
+
+        <!-- TAB 4: CONCURRENCY & LOCKS MONITOR -->
+        <div id="lld-tab-locks" class="lld-tab-panel" style="display: none;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 10px; color: #fff;">Task 5: Concurrency Lock Engine & Active Holds</h3>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 18px;">
+            Real-time snapshot from <code>GET /api/system/state</code> showing active 5-minute atomic seat locks.
+          </p>
+
+          <div id="lld-locks-container">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Live API Request Toast -->
+  <div class="api-live-toast" id="api-live-toast" style="display: none;" onclick="lldDrawer.openToApiTab()">
+    <span>⚡</span>
+    <span id="api-live-toast-text">GET /api/events (200 OK • 12ms)</span>
+    <span style="font-size: 0.72rem; color: var(--brand-blue-light); text-decoration: underline;">Inspect</span>
+  </div>
+
+  <!-- Standard Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/ticketBoxApp.js"></script>
+  <script src="js/lldDrawer.js"></script>
+</body>
+</html>
